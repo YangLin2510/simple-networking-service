@@ -1,31 +1,29 @@
 package yang.lin35.networking_service_demo.api;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.JMSException;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.Session;
-import javax.jms.TextMessage;
-
+import com.alibaba.fastjson.JSON;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import com.alibaba.fastjson.JSON;
-
 import yang.lin35.networking_service_demo.entitys.MsgEntity;
+import yang.lin35.networking_service_demo.websocket.ChatEndpoint;
+
+import javax.jms.*;
+
 @Component
 public class ActiveMqManager {
 	@Autowired
 	ConnectionFactory factory;
 	@Autowired
 	HttpMessageUtils httpUtils;
-		
-	public void sendMessageToQueue(String queue,String message) throws JMSException {
+	@Autowired
+	ChatEndpoint chatEndpoint;
+
+    /**
+     * 发送消息到指定的队列
+     * @param queue
+     * @param message
+     * @throws JMSException
+     */
+	public synchronized void sendMessageToQueue(String queue,String message) throws JMSException {
 		Connection connection = null;
 		Session session = null;
 		Queue q = null;
@@ -42,8 +40,14 @@ public class ActiveMqManager {
 		session.close();
 		connection.close();
 	}
-	
-	public void setListener(String queue,String url)  throws JMSException{
+
+    /**
+     * 监听队列的消息
+     * @param queue 消息队列
+     * @param userId
+     * @throws JMSException
+     */
+	public synchronized void setListener(String queue,Long userId)  throws JMSException{
 		Connection connection = null;
 		Session session = null;
 		Queue q = null;
@@ -52,13 +56,15 @@ public class ActiveMqManager {
 		connection.start();
 		session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 		q = session.createQueue(queue);
+
+
 		MessageConsumer consumer = session.createConsumer(q);
 		consumer.setMessageListener(msg->{
 			if(msg instanceof TextMessage) {
 				TextMessage m = (TextMessage)msg;
 				try {
 					String text = m.getText();
-					messageReceiver(text,url);
+					messageReceiver(text,userId);
 				} catch (JMSException e) {
 					e.printStackTrace();
 				}
@@ -68,9 +74,8 @@ public class ActiveMqManager {
 		
 	}
 	
-	private void messageReceiver(String msg,String url) {
+	private void messageReceiver(String msg,Long userId) {
 		MsgEntity msgMap = JSON.parseObject(msg,MsgEntity.class);
-		
-		httpUtils.sendHttpMessageToClient(msgMap.getMsg(),url);
+		chatEndpoint.sendMessage(userId,msg);
 	}
 }

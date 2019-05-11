@@ -1,28 +1,25 @@
 package yang.lin35.networking_service_demo.api;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.jms.JMSException;
-
+import com.alibaba.fastjson.JSON;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpRequest;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.alibaba.fastjson.JSON;
-
+import yang.lin35.networking_service_demo.dao.UserMapper;
+import yang.lin35.networking_service_demo.dao.date_entitys.User;
 import yang.lin35.networking_service_demo.entitys.MsgEntity;
+
+import javax.jms.JMSException;
 
 
 @RestController
 public class ConnectController {
 	@Autowired
 	ActiveMqManager mq;
-	
-	Map<String,String> USER_QUEUE = new HashMap<String, String>();
-	
+	@Autowired
+	UserMapper userMapper;
+
 	@RequestMapping("/sendToQueue")
 	public String sendMessageToQueue(@RequestBody MsgEntity msg) {
 		
@@ -38,19 +35,21 @@ public class ConnectController {
 	private String getQueueName(MsgEntity msg) {
 		return msg.getUsername()+":"+msg.getReceiver();
 	}
-	
-	@RequestMapping("/init")
-	public String initConnect(String username,HttpRequest request) {
-		String userHost =  request.getURI().getHost();
-		
-		/*
-		 * TODO: 为用户添加MQ监听器,等待接收消息
-		 * 用户的通讯录,每个通讯录代表一个Queue或者一个Topic
-		 * 记录用户的IP地址，消息接收监听器收到消息时，发送HTTP消息给接收端	
-		*/
-		String url = null;
+
+	/**
+	 * 初始化 队列消息监听
+	 * @param id
+	 * @return
+	 */
+	@RequestMapping("/init/{userId}")
+	public String initConnect(@PathVariable("userId") Long id) {
 		try {
-			mq.setListener("", url);
+			User currentUser = userMapper.findUserById(id);
+			String[] contactArray = currentUser.getContactList().split(",");
+			for (String contactId:contactArray){
+				User c = userMapper.findUserById(Long.valueOf(contactId));
+				mq.setListener(c.getId()+":"+id,id);//队列的格式,发送者ID:接受者ID
+			}
 		} catch (JMSException e) {
 			e.printStackTrace();
 			return "-1";

@@ -7,7 +7,7 @@ public class MsgEntity {
 	private String username;//消息发送者
 	private String msg;//消息
 	private String receiver;//消息接收者
-	private Date sendDateTime;//发送日期
+	private String sendDateTime;//发送日期
 	
 	public String getUsername() {
 		return username;
@@ -27,12 +27,12 @@ public class MsgEntity {
 	public void setReceiver(String receiver) {
 		this.receiver = receiver;
 	}
-	public Date getSendDateTime() {
+
+	public String getSendDateTime() {
 		return sendDateTime;
 	}
-	public void setSendDateTime(Date sendDateTime) {
+
+	public void setSendDateTime(String sendDateTime) {
 		this.sendDateTime = sendDateTime;
 	}
-	
-	
 }
